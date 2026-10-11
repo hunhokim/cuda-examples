@@ -18,3 +18,4 @@ foreach(factor IN ITEMS 2 4 8)
 endforeach()
 
 add_executable(matmul_fat_matrices_00_naive src/matmul/fat_matrices/00_naive.cu)
+add_executable(matmul_fat_matrices_01_shared_memory src/matmul/fat_matrices/01_shared_memory.cu)

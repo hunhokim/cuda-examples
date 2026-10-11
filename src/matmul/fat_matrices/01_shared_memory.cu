@@ -38,7 +38,7 @@ __global__ void matmul(const float *a, const float *b, float *c, const int M, co
     float sum = 0.0f;
     for (int i = 0; i < K; i += BLOCK_K) {
         a_block[threadIdx.y][threadIdx.x] = a[y * K + (i + threadIdx.x)];
-        b_block[threadIdx.y][threadIdx.x] = b[(i + threadIdx.y) * K + x];
+        b_block[threadIdx.y][threadIdx.x] = b[(i + threadIdx.y) * N + x];
         __syncthreads();
 
         for (int j = 0; j < BLOCK_K; ++j) {

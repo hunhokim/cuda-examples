@@ -35,26 +35,18 @@ __global__ void matmul(const float *a, const float *b, float *c, const int M, co
     __shared__ float a_block[BLOCK_M][BLOCK_K];
     __shared__ float b_block[BLOCK_K][BLOCK_N];
 
-    for (int i = 0; i < K; i += BLOCK_K) {
-        const auto block_m = threadIdx.y;
-        const auto block_k = i + threadIdx.x;
-        a_block[block_m][block_k] = a[y * K + block_k];
-    }
-    __syncthreads();
-
-    for (int i = 0; i < K; i += BLOCK_K) {
-        const auto block_k = i + threadIdx.y;
-        const auto block_n = threadIdx.x;
-        b_block[block_k][block_n] = b[block_k * K + x];
-    }
-    __syncthreads();
-
     float sum = 0.0f;
-    for (int i = 0; i < K; ++i) {
-        const auto block_m = threadIdx.y;
-        const auto block_n = threadIdx.x;
-        sum += a_block[block_m][i] * b_block[i][block_n];
+    for (int i = 0; i < K; i += BLOCK_K) {
+        a_block[threadIdx.y][threadIdx.x] = a[y * K + (i + threadIdx.x)];
+        b_block[threadIdx.y][threadIdx.x] = b[(i + threadIdx.y) * K + x];
+        __syncthreads();
+
+        for (int j = 0; j < BLOCK_K; ++j) {
+            sum += a_block[threadIdx.y][j] * b_block[j][threadIdx.x];
+        }
+        __syncthreads();
     }
+
     c[y * N + x] = sum;
 }
 

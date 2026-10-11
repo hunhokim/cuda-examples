@@ -1,11 +1,9 @@
 #include <cuda_runtime.h>
 
-#include <charconv>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <source_location>
-#include <string_view>
 
 void cuda_check(cudaError_t error,
                 const std::source_location location = std::source_location::current()) {
@@ -16,19 +14,13 @@ void cuda_check(cudaError_t error,
     }
 }
 
-unsigned int block_dimension(std::string_view text) {
-    unsigned int value = 0;
-    const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
-    if (error != std::errc{} || end != text.data() + text.size() || value == 0) {
-        std::cerr << "Block dimensions must be positive integers.\n";
-        std::exit(EXIT_FAILURE);
-    }
-    return value;
-}
-
 template <int BLOCK_M, int BLOCK_N, int BLOCK_K>
 __global__ void matmul(const float *a, const float *b, float *c, const int M, const int N,
                        const int K) {
+    static_assert(BLOCK_M > 0 && BLOCK_N > 0 && BLOCK_K > 0);
+    static_assert(BLOCK_M == BLOCK_K && BLOCK_N == BLOCK_K,
+                  "One load per thread requires equal tile dimensions.");
+
     const size_t x = blockIdx.x * blockDim.x + threadIdx.x;
     const size_t y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -50,9 +42,11 @@ __global__ void matmul(const float *a, const float *b, float *c, const int M, co
     c[y * N + x] = sum;
 }
 
-int main(int argc, char **argv) {
+int main() {
     constexpr auto M = 4096, N = 4096, K = 4096;
     constexpr auto BLOCK_M = 32, BLOCK_N = 32, BLOCK_K = 32;
+    static_assert(M % BLOCK_M == 0 && N % BLOCK_N == 0 && K % BLOCK_K == 0,
+                  "Matrix dimensions must be divisible by tile dimensions.");
     constexpr size_t a_bytes = M * K * sizeof(float);
     constexpr size_t b_bytes = K * N * sizeof(float);
     constexpr size_t c_bytes = M * N * sizeof(float);

@@ -213,6 +213,21 @@ one warm-up and one measured launch. Tile sizes are runtime values, so changing
 them requires no recompilation. Future sweeps can save results under
 `results/matmul/fat_matrices/01_shared_memory/`.
 
+Compare tile configurations in a bar plot at `M=N=K=4096`
+(three independent runs per configuration, in shuffled order):
+
+```bash
+MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_shared_memory_tiles.py
+```
+
+This saves samples, a summary, and `tile_latency.png` under
+`results/matmul/fat_matrices/01_shared_memory/tile_configurations/`.
+The default tests eight output tile shapes (`4×16`, `4×32`, `8×32`, `16×16`, `32×8`, `16×32`,
+`32×16`, `32×32`), each with `BLOCK_K` of 8, 16, and 32.
+Use `--tiles 8x32x16,16x16x32,32x8x8` to choose configurations,
+`--samples` to change the repeat count, or `--input <samples.csv>` to replot
+without running GPU work. Each run includes an untimed warm-up.
+
 ## IDE
 
 The root `compile_commands.json` symlink provides compiler settings.

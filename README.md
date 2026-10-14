@@ -74,6 +74,30 @@ scratch cache lines that could add writeback traffic during the measured launch.
 
 ## Statistics and plots
 
+Results mirror the source tree, with the `.cu` extension removed and an
+experiment directory underneath. For example,
+`src/matmul/fat_matrices/01_shared_memory.cu` has profiling results in
+`results/matmul/fat_matrices/01_shared_memory/nvprof/`.
+
+```text
+results/
+├── vector_add/
+│   ├── 00_vector_add/{threads_sweep,elements_sweep,nvprof}/
+│   ├── 01_vector_add_float4/comparison/
+│   └── 02_vector_add_unrolled/comparison/
+└── matmul/fat_matrices/
+    ├── 00_naive/{blocks,blocks_replot,simplified_check,nvprof}/
+    ├── 01_shared_memory/nvprof/
+    └── nvprof/                     # Shared profiler capability inventory
+```
+
+Comparison directories retain all variants measured in the same experiment.
+Results are local, Git-ignored artifacts. Plotting defaults target the baseline
+source; when selecting another `--binary`, also set `--output-dir` to its source
+directory and experiment name (for example,
+`results/vector_add/01_vector_add_float4/threads_sweep`). Use separate experiment
+names to preserve earlier runs.
+
 The two plotting scripts share measurement and plotting helpers in
 `scripts/timing_common.py`. Each runs the program once per configuration per sample and
 calculates means and, when multiple samples are collected, sample standard deviations:
@@ -81,8 +105,8 @@ calculates means and, when multiple samples are collected, sample standard devia
 ```bash
 export UV_CACHE_DIR=.cache/uv
 uv sync --locked
-MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_block_sizes.py --output-dir results/threads_sweep
-MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_element_counts.py --output-dir results/elements_sweep
+MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_block_sizes.py --output-dir results/vector_add/00_vector_add/threads_sweep
+MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_element_counts.py --output-dir results/vector_add/00_vector_add/elements_sweep
 ```
 
 Python is pinned in `.python-version`; `uv.lock` pins all Python dependencies.
@@ -126,7 +150,7 @@ estimating sustained DRAM bandwidth.
 Replot saved samples without accessing the GPU:
 
 ```bash
-MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_element_counts.py --input results/elements_sweep/samples.csv --output-dir results/elements_sweep
+MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_element_counts.py --input results/vector_add/00_vector_add/elements_sweep/samples.csv --output-dir results/vector_add/00_vector_add/elements_sweep
 ```
 
 ## Naive matrix multiplication block sweep
@@ -148,7 +172,7 @@ Sweep block shapes and plot their mean latency and FP32 throughput:
 
 ```bash
 MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_matmul_block_sizes.py
-MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_matmul_block_sizes.py --blocks 8x32,16x16,32x8 --samples 5 --output-dir results/matmul_256_threads
+MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_matmul_block_sizes.py --blocks 8x32,16x16,32x8 --samples 5 --output-dir results/matmul/fat_matrices/00_naive/blocks_256_threads
 ```
 
 The default sweep covers nine shapes with 64–1024 threads and three independent
@@ -157,7 +181,7 @@ round to reduce ordering bias. Comparing shapes with the same total thread count
 helps reveal the effect of arranging threads along matrix rows and columns.
 This benchmark retains natural cache behavior; it does not explicitly evict caches.
 
-Results go to `results/matmul_blocks/`: `samples.csv`, `summary.csv`,
+Results go to `results/matmul/fat_matrices/00_naive/blocks/`: `samples.csv`, `summary.csv`,
 `block_shape_timings.png`, and `block_shape_tflops.png`. Error bars show ±1 sample
 standard deviation across runs, not confidence intervals. TFLOPS are calculated
 per sample from elapsed time before averaging. With `--samples 1`, standard
@@ -167,8 +191,27 @@ is printed; close results may require more samples to distinguish reliably.
 Replot saved data without running GPU work:
 
 ```bash
-MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_matmul_block_sizes.py --input results/matmul_blocks/samples.csv --output-dir results/matmul_blocks_replot
+MPLCONFIGDIR=.cache/matplotlib uv run --locked python scripts/plot_matmul_block_sizes.py --input results/matmul/fat_matrices/00_naive/blocks/samples.csv --output-dir results/matmul/fat_matrices/00_naive/blocks_replot
 ```
+
+## Shared-memory matrix multiplication
+
+Pass matrix dimensions followed by tile dimensions:
+
+```bash
+./build/matmul_fat_matrices_01_shared_memory 4096 4096 4096 16 32 8
+```
+
+Arguments are `M N K BLOCK_M BLOCK_N BLOCK_K`; defaults are
+`4096 4096 4096 32 32 32`. Each matrix dimension must be divisible by its
+corresponding tile dimension. A block uses `BLOCK_M * BLOCK_N` threads and
+`4 * BLOCK_K * (BLOCK_M + BLOCK_N)` bytes of dynamic shared memory; CUDA reports
+configurations exceeding device limits. Tile dimensions may differ.
+
+The program prints the configuration, latency in milliseconds, and TFLOPS after
+one warm-up and one measured launch. Tile sizes are runtime values, so changing
+them requires no recompilation. Future sweeps can save results under
+`results/matmul/fat_matrices/01_shared_memory/`.
 
 ## IDE
 

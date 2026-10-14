@@ -4,7 +4,7 @@ from timing_common import argument_parser, integer_list, positive_int, run
 
 
 def main():
-    parser = argument_parser(__doc__, "results/elements_sweep")
+    parser = argument_parser(__doc__, "results/vector_add/00_vector_add/elements_sweep")
     parser.add_argument("--n", type=integer_list,
                         default=[2**exponent for exponent in range(10, 26)],
                         help="Comma-separated element counts (default: powers of two from 2^10 to 2^25)")

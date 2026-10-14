@@ -116,7 +116,7 @@ def main():
     parser.add_argument("--samples", type=positive_int, default=3,
                         help="Independent runs per shape (default: 3)")
     parser.add_argument("--input", type=Path, help="Replot samples.csv without accessing the GPU")
-    parser.add_argument("--output-dir", type=Path, default=Path("results/matmul_blocks"))
+    parser.add_argument("--output-dir", type=Path, default=Path("results/matmul/fat_matrices/00_naive/blocks"))
     args = parser.parse_args()
     try:
         args.output_dir.mkdir(parents=True, exist_ok=True)
